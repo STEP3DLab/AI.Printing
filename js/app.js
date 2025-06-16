@@ -85,13 +85,15 @@ async function runCalc(geometry){
   const costDlp = (materialVol + supportsVol) * pr * copiesCnt +
                    (materialVol + supportsVol) * tcd * pmh * copiesCnt + pack;
 
-  const f = n => n.toFixed(2);
-  sx.textContent = f(size.x);  sy.textContent = f(size.y);  sz.textContent = f(size.z);
-  gx.textContent = f(scaledSize.x); gy.textContent = f(scaledSize.y); gz.textContent = f(scaledSize.z);
-  scaleOut.textContent = scale.toFixed(3);
-  volOut.textContent   = f(volCm3);
-  costFdmElem.textContent  = f(costFdm)+' ₽';
-  costDlpElem.textContent  = f(costDlp)+' ₽';
+  const format = n => n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const formatScale = n => n.toLocaleString('ru-RU', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+
+  sx.textContent = format(size.x);  sy.textContent = format(size.y);  sz.textContent = format(size.z);
+  gx.textContent = format(scaledSize.x); gy.textContent = format(scaledSize.y); gz.textContent = format(scaledSize.z);
+  scaleOut.textContent = formatScale(scale);
+  volOut.textContent   = format(volCm3);
+  costFdmElem.textContent  = format(costFdm)+' ₽';
+  costDlpElem.textContent  = format(costDlp)+' ₽';
   results.style.display = '';
 
   const canvas = previewCanvas;
