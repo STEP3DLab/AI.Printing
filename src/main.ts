@@ -1,15 +1,26 @@
+// Подключаем библиотеки Three.js и вспомогательные модули
 import * as THREE from 'three';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader.js';
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+
+// Функции для работы с STL-файлом
 import { volume } from './domain/stl/volume';
 import { boundingBox } from './domain/stl/boundingBox';
+
+// Расчёт стоимости печати
 import { calculateCost } from './domain/cost';
 import type { CostParams } from './domain/types';
+
+// UI-компоненты
 import { CostCard } from './ui/CostCard';
 import { showAlert } from './ui/Alert';
+
+// Общие стили приложения
 import './styles/main.scss';
 
+// Находим контейнер для приложения и сразу вставляем HTML-разметку
 const app = document.getElementById('app') as HTMLElement;
+// Вставляем форму с параметрами печати и область для результатов
 app.innerHTML = `
 <div class="row g-4">
   <div class="col-lg-4">
@@ -50,26 +61,32 @@ app.innerHTML = `
 <canvas id="previewCanvas" class="mt-4"></canvas>
 `;
 
+// Берём значение из поля ввода и преобразуем его в число
 function getNumber(id: string): number {
   const el = document.getElementById(id) as HTMLInputElement;
   return parseFloat(el.value) || 0;
 }
 
+// Загружает модель либо из файла, либо по URL
 async function loadFromInput(): Promise<THREE.BufferGeometry | null> {
   const fileInput = document.getElementById('fileInput') as HTMLInputElement;
   const fileUrl = document.getElementById('fileUrl') as HTMLInputElement;
   if (fileInput.files && fileInput.files[0]) {
+    // Читаем файл из input type="file"
     const buf = await fileInput.files[0].arrayBuffer();
     return new STLLoader().parse(buf);
   }
   if (fileUrl.value) {
+    // Скачиваем файл по указанному URL
     const resp = await fetch(fileUrl.value);
     const buf = await resp.arrayBuffer();
     return new STLLoader().parse(buf);
   }
+  // Ничего не выбрано
   return null;
 }
 
+// Основная функция расчёта и отображения результатов
 async function runCalc(geom: THREE.BufferGeometry) {
   const tgtMax = getNumber('targetMax');
   if (!geom || !tgtMax) {
@@ -77,14 +94,18 @@ async function runCalc(geom: THREE.BufferGeometry) {
     return;
   }
 
+  // Определяем габариты модели и её объём
   const box = boundingBox(geom);
   const size = box.getSize(new THREE.Vector3());
   const rawVol = volume(geom);
+
+  // Рассчитываем масштаб для достижения заданного максимального размера
   const scale = tgtMax / Math.max(size.x, size.y, size.z);
   const scaledSize = size.clone().multiplyScalar(scale);
   const scaledVol = rawVol * Math.pow(scale, 3);
   const volCm3 = scaledVol / 1000.0;
 
+  // Собираем параметры для расчёта стоимости
   const params: CostParams = {
     priceFilament: getNumber('priceFilament'),
     priceResin: getNumber('priceResin'),
@@ -97,8 +118,10 @@ async function runCalc(geom: THREE.BufferGeometry) {
     packCost: getNumber('packCost')
   };
 
+  // Выполняем расчёт стоимости печати
   const costs = calculateCost(volCm3, params);
 
+  // Отображаем расчётные значения на странице
   (document.getElementById('scaleOut') as HTMLElement).textContent = scale.toFixed(3);
   (document.getElementById('volOut') as HTMLElement).textContent = volCm3.toFixed(2);
   new CostCard(document.getElementById('costFdm') as HTMLElement).value = costs.fdm.toFixed(2) + ' ₽';
@@ -109,6 +132,8 @@ async function runCalc(geom: THREE.BufferGeometry) {
   const width = canvas.parentElement!.clientWidth;
   canvas.width = width;
   canvas.height = width * 0.75;
+
+  // Создаём сцену Three.js для предварительного просмотра модели
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf8f9fa);
@@ -129,7 +154,9 @@ async function runCalc(geom: THREE.BufferGeometry) {
   animate();
 }
 
+// Обработчик кнопки "Рассчитать"
 (document.getElementById('calcBtn') as HTMLButtonElement).addEventListener('click', async () => {
+  // Загружаем геометрию и запускаем расчёт
   const geom = await loadFromInput();
   if (!geom) {
     showAlert('Выберите файл или URL');
