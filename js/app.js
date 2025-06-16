@@ -1,31 +1,60 @@
-function signedVolumeOfTriangle(p1, p2, p3){
-  return p1.dot(p2.clone().cross(p3)) / 6.0;
+import { computeVolume } from './volume.js';
+
+const fileInput = document.getElementById('fileInput');
+const fileUrl   = document.getElementById('fileUrl');
+const dropZone  = document.getElementById('dropZone');
+const calcBtn   = document.getElementById('calcBtn');
+const progress  = document.getElementById('progress');
+const targetMax = document.getElementById('targetMax');
+const priceFilament = document.getElementById('priceFilament');
+const priceResin    = document.getElementById('priceResin');
+const timeCoefFdm   = document.getElementById('timeCoefFdm');
+const timeCoefDlp   = document.getElementById('timeCoefDlp');
+const priceMachine  = document.getElementById('priceMachine');
+const infill        = document.getElementById('infill');
+const supportPct    = document.getElementById('supportPct');
+const copies        = document.getElementById('copies');
+const packCost      = document.getElementById('packCost');
+const results       = document.getElementById('results');
+const scaleOut      = document.getElementById('scaleOut');
+const volOut        = document.getElementById('volOut');
+const sx = document.getElementById('sx');
+const sy = document.getElementById('sy');
+const sz = document.getElementById('sz');
+const gx = document.getElementById('gx');
+const gy = document.getElementById('gy');
+const gz = document.getElementById('gz');
+const costFdmElem = document.getElementById('costFdmElem');
+const costDlpElem = document.getElementById('costDlpElem');
+const previewCanvas = document.getElementById('previewCanvas');
+
+function validate(el){
+  if(isNaN(parseFloat(el.value))) el.classList.add('is-invalid');
+  else el.classList.remove('is-invalid');
 }
+document.querySelectorAll('input[type=number],input[type=url]').forEach(el=>{
+  el.addEventListener('input',()=>validate(el));
+});
 
-function computeVolume(geometry){
-  const pos = geometry.attributes.position;
-  let volume = 0;
-  for(let i=0; i<pos.count; i+=3){
-    const p1 = new THREE.Vector3().fromBufferAttribute(pos, i);
-    const p2 = new THREE.Vector3().fromBufferAttribute(pos, i+1);
-    const p3 = new THREE.Vector3().fromBufferAttribute(pos, i+2);
-    volume += signedVolumeOfTriangle(p1,p2,p3);
-  }
-  return Math.abs(volume);
-}
-
-document.getElementById('calcBtn').addEventListener('click', async () => {
-  const file = document.getElementById('fileInput').files[0];
-  const tgtMax = parseFloat(document.getElementById('targetMax').value);
-  if(!file || !tgtMax){ alert('Загрузите STL и задайте габарит.'); return; }
-
+async function loadGeometry(file){
+  progress.textContent = 'Загрузка...';
   const arrayBuffer = await file.arrayBuffer();
   const loader = new STLLoader();
-  let geometry;
-  try{
-    geometry = loader.parse(arrayBuffer);
-  }catch(e){
-    alert('Не удалось прочитать STL: '+e.message);
+  return loader.parse(arrayBuffer);
+}
+
+async function loadGeometryFromUrl(url){
+  progress.textContent = 'Загрузка из URL...';
+  const resp = await fetch(url);
+  const buf = await resp.arrayBuffer();
+  const loader = new STLLoader();
+  return loader.parse(buf);
+}
+
+async function runCalc(geometry){
+  const tgtMax = parseFloat(targetMax.value);
+  if(!geometry || !tgtMax){
+    alert('Загрузите STL и задайте габарит.');
     return;
   }
 
@@ -43,9 +72,18 @@ document.getElementById('calcBtn').addEventListener('click', async () => {
   const tcf = parseFloat(timeCoefFdm.value);
   const tcd = parseFloat(timeCoefDlp.value);
   const pmh = parseFloat(priceMachine.value);
+  const inf = Math.max(0, Math.min(100, parseFloat(infill.value))) / 100;
+  const spc = Math.max(0, parseFloat(supportPct.value)) / 100;
+  const copiesCnt = Math.max(1, parseInt(copies.value||1));
+  const pack = parseFloat(packCost.value)||0;
 
-  const costFdm = volCm3*pf + volCm3*tcf*pmh;
-  const costDlp = volCm3*pr + volCm3*tcd*pmh;
+  const materialVol = volCm3 * inf;
+  const supportsVol = volCm3 * spc;
+
+  const costFdm = (materialVol + supportsVol) * pf * copiesCnt +
+                   (materialVol + supportsVol) * tcf * pmh * copiesCnt + pack;
+  const costDlp = (materialVol + supportsVol) * pr * copiesCnt +
+                   (materialVol + supportsVol) * tcd * pmh * copiesCnt + pack;
 
   const f = n => n.toFixed(2);
   sx.textContent = f(size.x);  sy.textContent = f(size.y);  sz.textContent = f(size.z);
@@ -63,10 +101,43 @@ document.getElementById('calcBtn').addEventListener('click', async () => {
   const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf8f9fa);
   const camera = new THREE.PerspectiveCamera(45, width/(width*0.75), 1, 10000);
   camera.position.set(0,0, Math.max(...scaledSize.toArray())*2);
+  const controls = new OrbitControls(camera, canvas);
   const light = new THREE.DirectionalLight(0xffffff, 1);
   light.position.set(1,1,1); scene.add(light);
   scene.add(new THREE.AmbientLight(0x888888));
   const mesh = new THREE.Mesh(geometry.clone(), new THREE.MeshStandardMaterial({color:0x999999}));
   mesh.scale.set(scale, scale, scale); scene.add(mesh);
-  renderer.render(scene, camera);
+  function animate(){
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+  animate();
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const s = e.deltaY>0?0.95:1.05;
+    mesh.scale.multiplyScalar(s);
+ });
+}
+
+calcBtn.addEventListener('click', async () => {
+  let geom;
+  try{
+    if(fileInput.files[0]) geom = await loadGeometry(fileInput.files[0]);
+    else if(fileUrl.value) geom = await loadGeometryFromUrl(fileUrl.value);
+    else{ alert('Выберите файл или URL'); return; }
+    progress.textContent = '';
+    await runCalc(geom);
+  }catch(e){
+    progress.textContent = '';
+    alert('Ошибка чтения STL: '+e.message);
+  }
+});
+
+dropZone.addEventListener('dragover',e=>{e.preventDefault(); dropZone.classList.add('dragover');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop',e=>{
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  fileInput.files = e.dataTransfer.files;
 });
