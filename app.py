@@ -70,12 +70,20 @@ def estimate():
         except Exception:
             raise ValueError(f'Некорректное значение: {name}')
 
+    technology = request.form.get('technology', 'fdm').lower()
+
     try:
-        price_filament = get_param('price_filament', 4)
-        price_resin = get_param('price_resin', 14)
-        time_coef_fdm = get_param('time_coef_fdm', 0.04)
-        time_coef_dlp = get_param('time_coef_dlp', 0.02)
         price_machine_hour = get_param('price_machine_hour', 150)
+        if technology == 'fdm':
+            price_material = get_param('price_filament', 10)
+            time_coef = get_param('time_coef_fdm', 0.04)
+            min_cost = 500
+        elif technology == 'dlp':
+            price_material = get_param('price_resin', 50)
+            time_coef = get_param('time_coef_dlp', 0.02)
+            min_cost = 1000
+        else:
+            return jsonify(error='Неизвестная технология'), 400
     except ValueError as e:
         return jsonify(error=str(e)), 400
 
@@ -84,8 +92,9 @@ def estimate():
     volume_cm3 = volume_mm3 / 1000.0
     scaled_volume_cm3 = volume_cm3 * (scale ** 3)
 
-    cost_fdm = scaled_volume_cm3 * price_filament + scaled_volume_cm3 * time_coef_fdm * price_machine_hour
-    cost_dlp = scaled_volume_cm3 * price_resin + scaled_volume_cm3 * time_coef_dlp * price_machine_hour
+    cost = scaled_volume_cm3 * price_material + scaled_volume_cm3 * time_coef * price_machine_hour
+    if cost < min_cost:
+        cost = min_cost
 
     return jsonify({
         'x_dim': bbox[0],
@@ -93,8 +102,8 @@ def estimate():
         'z_dim': bbox[2],
         'scale': scale,
         'v_scaled': scaled_volume_cm3,
-        'cost_fdm': cost_fdm,
-        'cost_dlp': cost_dlp
+        'technology': technology,
+        'cost': cost
     })
 
 

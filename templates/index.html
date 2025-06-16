@@ -18,12 +18,19 @@
             <label for="target_dim" class="form-label">Целевой наибольший габарит, мм</label>
             <input class="form-control" type="number" id="target_dim" name="target_dim" step="0.01" min="0.01" required>
         </div>
+        <div class="mb-3">
+            <label for="technology" class="form-label">Технология печати</label>
+            <select class="form-select" id="technology" name="technology">
+                <option value="fdm">FDM (пластик)</option>
+                <option value="dlp">DLP/LCD (смола)</option>
+            </select>
+        </div>
         <h5>Параметры стоимости</h5>
         <div class="row">
             <div class="col-md-6">
                 <div class="mb-3">
                     <label class="form-label">Цена филамента, ₽/см³</label>
-                    <input class="form-control" type="number" step="0.01" name="price_filament" value="4" min="0">
+                    <input class="form-control" type="number" step="0.01" name="price_filament" value="10" min="0">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Коэф. машинного времени FDM, ч/см³</label>
@@ -33,7 +40,7 @@
             <div class="col-md-6">
                 <div class="mb-3">
                     <label class="form-label">Цена смолы, ₽/см³</label>
-                    <input class="form-control" type="number" step="0.01" name="price_resin" value="14" min="0">
+                    <input class="form-control" type="number" step="0.01" name="price_resin" value="50" min="0">
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Коэф. машинного времени DLP, ч/см³</label>
@@ -49,22 +56,10 @@
     </form>
 
     <div id="results" class="mt-4" style="display:none;">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card text-center mb-3">
-                    <div class="card-header">FDM печать (₽)</div>
-                    <div class="card-body">
-                        <h5 id="fdm-cost" class="card-title"></h5>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card text-center mb-3">
-                    <div class="card-header">DLP печать (₽)</div>
-                    <div class="card-body">
-                        <h5 id="dlp-cost" class="card-title"></h5>
-                    </div>
-                </div>
+        <div class="card text-center mb-3">
+            <div class="card-header"><span id="tech-header"></span> (₽)</div>
+            <div class="card-body">
+                <h5 id="print-cost" class="card-title"></h5>
             </div>
         </div>
         <table class="table table-bordered">

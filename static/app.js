@@ -12,8 +12,8 @@ document.getElementById('estimate-form').addEventListener('submit', async functi
             alert(json.error || 'Ошибка сервера');
             return;
         }
-        document.getElementById('fdm-cost').textContent = json.cost_fdm.toFixed(2);
-        document.getElementById('dlp-cost').textContent = json.cost_dlp.toFixed(2);
+    document.getElementById('tech-header').textContent = json.technology === 'fdm' ? 'FDM печать' : 'DLP печать';
+    document.getElementById('print-cost').textContent = json.cost.toFixed(2);
         const tableBody = document.getElementById('result-table');
         tableBody.innerHTML = '';
         const row = document.createElement('tr');
