@@ -1,4 +1,5 @@
-streamlit
+flask
 trimesh
 numpy-stl
 numpy
+Werkzeug>=3.0

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>3D-Print Cost Estimator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="bg-light">
+<div class="container py-4">
+    <h1 class="mb-4">3D-Print Cost Estimator</h1>
+    <form id="estimate-form" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="stl_file" class="form-label">Загрузите STL-файл</label>
+            <input class="form-control" type="file" id="stl_file" name="stl_file" accept=".stl" required>
+        </div>
+        <div class="mb-3">
+            <label for="target_dim" class="form-label">Целевой наибольший габарит, мм</label>
+            <input class="form-control" type="number" id="target_dim" name="target_dim" step="0.01" min="0.01" required>
+        </div>
+        <h5>Параметры стоимости</h5>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Цена филамента, ₽/см³</label>
+                    <input class="form-control" type="number" step="0.01" name="price_filament" value="4" min="0">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Коэф. машинного времени FDM, ч/см³</label>
+                    <input class="form-control" type="number" step="0.01" name="time_coef_fdm" value="0.04" min="0">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <label class="form-label">Цена смолы, ₽/см³</label>
+                    <input class="form-control" type="number" step="0.01" name="price_resin" value="14" min="0">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Коэф. машинного времени DLP, ч/см³</label>
+                    <input class="form-control" type="number" step="0.01" name="time_coef_dlp" value="0.02" min="0">
+                </div>
+            </div>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Цена машинного часа, ₽/ч</label>
+            <input class="form-control" type="number" step="0.01" name="price_machine_hour" value="150" min="0">
+        </div>
+        <button class="btn btn-primary" type="submit">Рассчитать</button>
+    </form>
+
+    <div id="results" class="mt-4" style="display:none;">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card text-center mb-3">
+                    <div class="card-header">FDM печать (₽)</div>
+                    <div class="card-body">
+                        <h5 id="fdm-cost" class="card-title"></h5>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card text-center mb-3">
+                    <div class="card-header">DLP печать (₽)</div>
+                    <div class="card-body">
+                        <h5 id="dlp-cost" class="card-title"></h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Размер X, мм</th>
+                    <th>Размер Y, мм</th>
+                    <th>Размер Z, мм</th>
+                    <th>Масштаб</th>
+                    <th>Объём, см³</th>
+                </tr>
+            </thead>
+            <tbody id="result-table"></tbody>
+        </table>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
