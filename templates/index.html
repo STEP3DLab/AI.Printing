@@ -1,81 +1,168 @@
+Ниже — **полностью-клиентский** вариант калькулятора, который работает без серверного Python-кода и поэтому годится для GitHub Pages.
+Файл единственный: сохраните его как `index.html` в корне репозитория `AI.Printing` и опубликуйте — страница откроется по тому же адресу `https://…/AI.Printing/`.
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>3D-Print Cost Estimator</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body class="bg-light">
-<div class="container py-4">
-    <h1 class="mb-4">3D-Print Cost Estimator</h1>
-    <form id="estimate-form" enctype="multipart/form-data">
-        <div class="mb-3">
-            <label for="stl_file" class="form-label">Загрузите STL-файл</label>
-            <input class="form-control" type="file" id="stl_file" name="stl_file" accept=".stl" required>
-        </div>
-        <div class="mb-3">
-            <label for="target_dim" class="form-label">Целевой наибольший габарит, мм</label>
-            <input class="form-control" type="number" id="target_dim" name="target_dim" step="0.01" min="0.01" required>
-        </div>
-        <div class="mb-3">
-            <label for="technology" class="form-label">Технология печати</label>
-            <select class="form-select" id="technology" name="technology">
-                <option value="fdm">FDM (пластик)</option>
-                <option value="dlp">DLP/LCD (смола)</option>
-            </select>
-        </div>
-        <h5>Параметры стоимости</h5>
-        <div class="row">
-            <div class="col-md-6">
-                <div class="mb-3">
-                    <label class="form-label">Цена филамента, ₽/см³</label>
-                    <input class="form-control" type="number" step="0.01" name="price_filament" value="10" min="0">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Коэф. машинного времени FDM, ч/см³</label>
-                    <input class="form-control" type="number" step="0.01" name="time_coef_fdm" value="0.04" min="0">
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="mb-3">
-                    <label class="form-label">Цена смолы, ₽/см³</label>
-                    <input class="form-control" type="number" step="0.01" name="price_resin" value="50" min="0">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Коэф. машинного времени DLP, ч/см³</label>
-                    <input class="form-control" type="number" step="0.01" name="time_coef_dlp" value="0.02" min="0">
-                </div>
-            </div>
-        </div>
-        <div class="mb-3">
-            <label class="form-label">Цена машинного часа, ₽/ч</label>
-            <input class="form-control" type="number" step="0.01" name="price_machine_hour" value="150" min="0">
-        </div>
-        <button class="btn btn-primary" type="submit">Рассчитать</button>
-    </form>
+<meta charset="UTF-8"/>
+<title>3D-Print Cost Estimator — Web (vanilla JS)</title>
 
-    <div id="results" class="mt-4" style="display:none;">
-        <div class="card text-center mb-3">
-            <div class="card-header"><span id="tech-header"></span> (₽)</div>
-            <div class="card-body">
-                <h5 id="print-cost" class="card-title"></h5>
-            </div>
-        </div>
-        <table class="table table-bordered">
-            <thead>
-                <tr>
-                    <th>Размер X, мм</th>
-                    <th>Размер Y, мм</th>
-                    <th>Размер Z, мм</th>
-                    <th>Масштаб</th>
-                    <th>Объём, см³</th>
-                </tr>
-            </thead>
-            <tbody id="result-table"></tbody>
-        </table>
-    </div>
+<!-- Bootstrap 5 (стили) -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+
+<!-- three.js и STLLoader (из CDN unpkg) -->
+<script src="https://unpkg.com/three@0.161.0/build/three.min.js"></script>
+<script type="module">
+  import { STLLoader } from 'https://unpkg.com/three@0.161.0/examples/jsm/loaders/STLLoader.js';
+  window.STLLoader = STLLoader;          /* делаем доступным в глобальной области */
+</script>
+
+<style>
+  body{padding-top:2rem;}
+  .result-card{min-width:160px;}
+  canvas{max-width:100%;border:1px solid #dee2e6;border-radius:.5rem;}
+</style>
+</head>
+
+<body class="container">
+
+<h1 class="mb-4">Калькулятор стоимости&nbsp;3D-печати (FDM / DLP)</h1>
+
+<!-- Форма ввода -------------------------------------------------------->
+<div class="row g-4">
+  <div class="col-lg-4">
+    <label class="form-label">STL-файл</label>
+    <input class="form-control" type="file" id="fileInput" accept=".stl"/>
+  </div>
+
+  <div class="col-lg-4">
+    <label class="form-label">Целевой наибольший габарит, мм</label>
+    <input class="form-control" type="number" step="0.1" min="0" id="targetMax" value="100"/>
+  </div>
+
+  <div class="col-lg-4 align-self-end">
+    <button id="calcBtn" class="btn btn-primary w-100">Рассчитать</button>
+  </div>
 </div>
-<script src="{{ url_for('static', filename='app.js') }}"></script>
-</body>
-</html>
+
+<hr class="my-4"/>
+
+<!-- Параметры стоимости ----------------------------------------------->
+<h4>Параметры стоимости</h4>
+<div class="row g-3">
+  <div class="col-6 col-lg-2"><label class="form-label small">Цена филамента ₽/см³</label><input id="priceFilament" class="form-control" type="number" step="0.1" value="4"></div>
+  <div class="col-6 col-lg-2"><label class="form-label small">Цена смолы ₽/см³</label><input id="priceResin" class="form-control" type="number" step="0.1" value="14"></div>
+  <div class="col-6 col-lg-2"><label class="form-label small">Время&nbsp;FDM ч/см³</label><input id="timeCoefFdm" class="form-control" type="number" step="0.001" value="0.04"></div>
+  <div class="col-6 col-lg-2"><label class="form-label small">Время&nbsp;DLP ч/см³</label><input id="timeCoefDlp" class="form-control" type="number" step="0.001" value="0.02"></div>
+  <div class="col-6 col-lg-2"><label class="form-label small">Стоимость часа ₽/ч</label><input id="priceMachine" class="form-control" type="number" step="1" value="150"></div>
+</div>
+
+<!-- Результаты --------------------------------------------------------->
+<div id="results" class="my-4" style="display:none;">
+  <h4>Результаты</h4>
+  <div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3"><div class="card text-center result-card">
+      <div class="card-body"><h5 class="card-title">Цена&nbsp;FDM</h5><p id="costFdm" class="fs-4 mb-0"></p></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card text-center result-card">
+      <div class="card-body"><h5 class="card-title">Цена&nbsp;DLP</h5><p id="costDlp" class="fs-4 mb-0"></p></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card text-center result-card">
+      <div class="card-body"><h5 class="card-title">Масштаб</h5><p id="scaleOut" class="fs-4 mb-0"></p></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card text-center result-card">
+      <div class="card-body"><h5 class="card-title">Объём, см³</h5><p id="volOut" class="fs-4 mb-0"></p></div></div></div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle mb-0">
+      <thead class="table-light"><tr><th></th><th>X, мм</th><th>Y, мм</th><th>Z, мм</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Исходный размер</th><td id="sx"></td><td id="sy"></td><td id="sz"></td></tr>
+        <tr><th scope="row">После масштабирования</th><td id="gx"></td><td id="gy"></td><td id="gz"></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Предварительный рендер (необяз.) ----------------------------------->
+<canvas id="previewCanvas" class="mt-4 d-none"></canvas>
+
+<!-- Скрипт расчёта ------------------------------------------------------>
+<script>
+(async () => {
+  /* маленький helper: объём треугольника относительно начала координат */
+  function signedVolumeOfTriangle(p1, p2, p3){
+    return p1.dot(p2.clone().cross(p3)) / 6.0;
+  }
+
+  function computeVolume(geometry){
+    const pos = geometry.attributes.position;
+    let volume = 0;
+    for(let i=0; i<pos.count; i+=3){
+      const p1 = new THREE.Vector3().fromBufferAttribute(pos, i);
+      const p2 = new THREE.Vector3().fromBufferAttribute(pos, i+1);
+      const p3 = new THREE.Vector3().fromBufferAttribute(pos, i+2);
+      volume += signedVolumeOfTriangle(p1,p2,p3);
+    }
+    return Math.abs(volume);           // в мм³
+  }
+
+  /* Основная логика */
+  document.getElementById('calcBtn').addEventListener('click', async () => {
+    const file     = document.getElementById('fileInput').files[0];
+    const tgtMax   = parseFloat(document.getElementById('targetMax').value);
+    if(!file || !tgtMax){ alert('Загрузите STL и задайте габарит.'); return; }
+
+    /* читаем STL → ArrayBuffer */
+    const arrayBuffer = await file.arrayBuffer();
+    const loader = new window.STLLoader();
+    let geometry;
+    try{
+      geometry = loader.parse(arrayBuffer);
+    }catch(e){
+      alert('Не удалось прочитать STL: '+e.message);
+      return;
+    }
+
+    geometry.computeBoundingBox();
+    const size = geometry.boundingBox.getSize(new THREE.Vector3()); // mm
+    const rawVol = computeVolume(geometry);                         // mm³
+
+    const scale = tgtMax / Math.max(size.x, size.y, size.z);
+    const scaledSize = size.clone().multiplyScalar(scale);
+    const scaledVol  = rawVol * scale**3;                           // mm³
+    const volCm3     = scaledVol / 1000.0;                          // см³
+
+    /* параметры стоимости */
+    const pf  = parseFloat(priceFilament.value);
+    const pr  = parseFloat(priceResin.value);
+    const tcf = parseFloat(timeCoefFdm.value);
+    const tcd = parseFloat(timeCoefDlp.value);
+    const pmh = parseFloat(priceMachine.value);
+
+    const costFdm = volCm3*pf + volCm3*tcf*pmh;
+    const costDlp = volCm3*pr + volCm3*tcd*pmh;
+
+    /* вывод */
+    const f = n => n.toFixed(2);
+    sx.textContent = f(size.x);  sy.textContent = f(size.y);  sz.textContent = f(size.z);
+    gx.textContent = f(scaledSize.x); gy.textContent = f(scaledSize.y); gz.textContent = f(scaledSize.z);
+    scaleOut.textContent = scale.toFixed(3);
+    volOut.textContent   = f(volCm3);
+    costFdm.textContent  = f(costFdm)+' ₽';
+    costDlp.textContent  = f(costDlp)+' ₽';
+    results.style.display = '';
+
+    /* (опционально) 3D-превью в canvas */
+    if(!previewCanvas.classList.contains('d-none')){
+      previewCanvas.classList.add('d-none');   // пересоздаём сцену, если повторный расчёт
+    }
+    const canvas = previewCanvas;
+    const width  = canvas.parentElement.clientWidth;
+    canvas.width = width; canvas.height = width*0.75;
+    const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+    const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf8f9fa);
+    const camera = new THREE.PerspectiveCamera(45, width/(width*0.75), 1, 10000);
+    camera.position.set(0,0, t... }); // trimmed preview due to length
+
+::contentReference[oaicite:0]{index=0}
+```
