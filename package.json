@@ -1,16 +1,22 @@
 {
-  "name": "ai.printing",
+  "name": "ai-printing",
   "version": "1.0.0",
-  "description": "Небольшое веб-приложение для оценки стоимости 3D‑печати. Теперь всё работает полностью на стороне клиента и не требует запуска сервера.",
-  "main": "sw.js",
-  "scripts": {
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "jsdom": "^26.1.0",
+    "three": "^0.163.0"
+  },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "sass": "^1.72.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.2.0",
+    "vitest": "^1.2.0"
   }
 }
