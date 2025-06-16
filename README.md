@@ -1,21 +1,12 @@
 # AI.Printing
 
-Simple Flask and Streamlit applications for estimating the cost of 3D printing. Upload an STL model, choose printing technology and parameters, and get an approximate price.
+Небольшое веб-приложение для оценки стоимости 3D‑печати.
+Теперь всё работает полностью на стороне клиента и не требует запуска сервера.
 
-## Running locally
+## Как использовать
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Start the Flask server:
-   ```bash
-   python app.py
-   ```
-3. Open `http://localhost:5000` in your browser.
+1. Откройте файл `index.html` в любом современном браузере.
+2. Загрузите STL‑файл и заполните параметры печати.
+3. Нажмите «Рассчитать» и получите объём модели, масштаб и примерную стоимость печати.
 
-Alternatively you can run the Streamlit interface:
-
-```bash
-streamlit run streamlit_app.py
-```
+В приложении используется `three.js` для чтения STL и расчёта объёма модели.

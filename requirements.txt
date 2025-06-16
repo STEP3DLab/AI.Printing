@@ -1,6 +1,0 @@
-flask
-trimesh
-numpy-stl
-numpy
-Werkzeug>=3.0
-streamlit
