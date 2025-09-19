@@ -10,10 +10,18 @@
     "test": "vitest"
   },
   "dependencies": {
+    "framer-motion": "^11.0.8",
     "jsdom": "^26.1.0",
+    "lucide-react": "^0.344.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7",
     "three": "^0.163.0"
   },
   "devDependencies": {
+    "@types/react": "^18.3.4",
+    "@types/react-dom": "^18.3.2",
+    "@vitejs/plugin-react": "^4.2.1",
     "sass": "^1.72.0",
     "typescript": "^5.3.3",
     "vite": "^5.2.0",
